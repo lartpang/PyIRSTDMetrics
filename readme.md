@@ -24,18 +24,24 @@ Your improvements and suggestions are welcome.
 
 ### Supported Metrics
 
-| Metric                        | Sample-based           | Whole-based | Related Class                                 | Level  |
-| ----------------------------- | ---------------------- | ----------- | --------------------------------------------- | ------ |
-| IoU                           | max,avg,adp,bin (nIoU) | bin (IoU)   | `CMMetrics`+`IOUHandler`                      | pixel  |
-| F1                            | max,avg,adp,bin        | bin         | `CMMetrics`+`FmeasureHandler`                 | pixel  |
-| Precision                     | max,avg,adp,bin        | bin         | `CMMetrics`+`PrecisionHandler`                | pixel  |
-| Recall                        | max,avg,adp,bin        | bin         | `CMMetrics`+`RecallHandler`                   | pixel  |
-| TPR                           | max,avg,adp,bin        | bin         | `CMMetrics`+`TPRHandler`                      | pixel  |
-| FPR                           | max,avg,adp,bin        | bin         | `CMMetrics`+`FPRHandler`                      | pixel  |
-| Pd/Fa                         |                        | ✔           | `MatchingBasedMetrics`+`DistanceOnlyMatching` | target |
-| hIoU                          |                        | ✔           | `MatchingBasedMetrics`+`DistanceOnlyMatching` | hybrid |
-| hIoU-based loc error analysis |                        | ✔           | `HierarchicalIoUBasedErrorAnalysis`           |        |
-| hIoU-based seg error analysis |                        | ✔           | `HierarchicalIoUBasedErrorAnalysis`           |        |
+| Metric                        | Sample-based           | Whole-based | Related Class                                                | Level  |
+| ----------------------------- | ---------------------- | ----------- | ------------------------------------------------------------ | ------ |
+| IoU                           | max,avg,adp,bin (nIoU) | bin (IoU)   | `CMMetrics`+`IOUHandler`                                     | pixel  |
+| F1                            | max,avg,adp,bin        | bin         | `CMMetrics`+`FmeasureHandler`                                | pixel  |
+| Precision                     | max,avg,adp,bin        | bin         | `CMMetrics`+`PrecisionHandler`                               | pixel  |
+| Recall                        | max,avg,adp,bin        | bin         | `CMMetrics`+`RecallHandler`                                  | pixel  |
+| TPR                           | max,avg,adp,bin        | bin         | `CMMetrics`+`TPRHandler`                                     | pixel  |
+| FPR                           | max,avg,adp,bin        | bin         | `CMMetrics`+`FPRHandler`                                     | pixel  |
+| Pd/Fa                         |                        | ✔           | `MatchingBasedMetrics`+`DistanceOnlyMatching`/`OPDCMatching` | target |
+| hIoU                          |                        | ✔           | `MatchingBasedMetrics`+`OPDCMatching`                        | hybrid |
+| hIoU-based loc error analysis |                        | ✔           | `HierarchicalIoUBasedErrorAnalysis`                          |        |
+| hIoU-based seg error analysis |                        | ✔           | `HierarchicalIoUBasedErrorAnalysis`                          |        |
+
+**NOTE**:
+
+- If you want to align the original implementation, use `DistanceOnlyMatching`.
+- If you want a more reasonable matching effect, use `OPDCMatching` we designed.
+- hIoU is a new metric that balances both pixel-level and target-level performance analysis and we provide a detailed error analysis tool based on it.
 
 As shown in `plot_average_metrics` of [examples/metric_recorder.py](./examples/metric_recorder.py):
 
