@@ -7,8 +7,8 @@ packages = ["py_irstd_metrics"]  # 直接指定包名
 
 [project]
 name = "pyirstdmetrics"
-version = "0.1.0"
-dependencies = ["numpy~=1.23.4", "scikit-image~=0.14.5", "scipy~=1.10.0"]
+version = "1.0.0"
+dependencies = ["numpy>=1.23,<2.0", "scikit-image>=0.14,<1.0", "scipy>=1.10,<2.0"]
 requires-python = ">=3.6"
 authors = [{ name = "lartpang", email = "lartpang@gmail.com" }]
 maintainers = [{ name = "lartpang", email = "lartpang@gmail.com" }]
