@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Time    : 2021/1/4
-# @Author  : Lart Pang
-# @GitHub  : https://github.com/lartpang
-
 import os
 import sys
 
@@ -233,5 +228,5 @@ def plot_average_metrics():
 
 
 if __name__ == "__main__":
-    # cal_sample_wise_metrics()
+    cal_sample_wise_metrics()
     plot_average_metrics()

@@ -85,7 +85,7 @@ class ProbabilityDetectionAndFalseAlarmRate:
             self.fn_objs[idx_bin] += fn_objs
             self.fp_area[idx_bin] += fp_area
 
-    def get(self) -> np.ndarray:
+    def get(self) -> dict:
         """Return the target-wise metrics: probability of detection and false alarm rate.
 
         Returns:
@@ -128,17 +128,17 @@ class OPDCMatching:
 
                 iou = 0
                 if _inter_area > 0:
-                    _union_area = np.count_nonzero(_pred_tgt_mask & _mask_tgt_mask)
+                    _union_area = np.count_nonzero(_pred_tgt_mask | _mask_tgt_mask)
                     iou = _inter_area / _union_area
                 paired_iou[i, j] = iou
         return paired_distance, paired_iou
 
-    def overlap_priority_constraint(self, matched_status, paired_distance, valid_iou_status) -> np.ndarray:
+    def overlap_priority_constraint(self, matched_status, paired_distance, valid_iou_status):
         row_ind, col_ind = optimize.linear_sum_assignment(paired_distance)
         matched_status[row_ind, col_ind] = True
         matched_status &= valid_iou_status
 
-    def distance_based_compensation(self, matched_status, paired_distance, valid_distance_status) -> None:
+    def distance_based_compensation(self, matched_status, paired_distance, valid_distance_status):
         _unmatched_mask_tgt_idxs = np.where(matched_status.sum(axis=1) == 0)[0]
         _unmatched_pred_tgt_idxs = np.where(matched_status.sum(axis=0) == 0)[0]
         sub_paired_distance = paired_distance[_unmatched_mask_tgt_idxs, :][:, _unmatched_pred_tgt_idxs]
@@ -157,8 +157,10 @@ class OPDCMatching:
         valid_distance_status = paired_distance < self.distance_threshold
 
         matched_status = np.zeros_like(paired_distance, dtype=bool)
-        self.overlap_priority_constraint(matched_status, paired_distance, valid_iou_status)
-        self.distance_based_compensation(matched_status, paired_distance, valid_distance_status)
+        if np.count_nonzero(valid_iou_status) > 0:
+            self.overlap_priority_constraint(matched_status, paired_distance, valid_iou_status)
+        if np.count_nonzero(valid_distance_status) > 0:
+            self.distance_based_compensation(matched_status, paired_distance, valid_distance_status)
         return matched_status
 
 

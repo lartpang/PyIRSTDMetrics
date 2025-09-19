@@ -9,7 +9,7 @@ sys.path.append("..")
 import py_irstd_metrics
 
 default_results = {
-    "v0_1_0": {
+    "v1_0_0": {
         "basic_fa": 0.000677490234375,
         "basic_pd": 0.4,
         "dist_fa": 0.000677490234375,
@@ -17,21 +17,21 @@ default_results = {
         "f1": 0.7234042553191489,
         "fpr": 0.111410725118057,
         "iou": 0.5666666666666667,
-        "loc_iou": 0.42857142857142855,
-        "loc_itf_err": 0.2857142857142857,
+        "loc_iou": 0.25,
+        "loc_itf_err": 0.375,
         "loc_m2s_err": 0.0,
-        "loc_pcp_err": 0.0,
-        "loc_s2m_err": 0.2857142857142857,
+        "loc_pcp_err": 0.25,
+        "loc_s2m_err": 0.125,
         "niou": 0.5435835351089588,
-        "opdc_fa": 4.8828125e-05,
-        "opdc_hiou": 0.22753395044416713,
-        "opdc_pd": 0.6,
+        "opdc_fa": 0.000677490234375,
+        "opdc_hiou": 0.14535917496443812,
+        "opdc_pd": 0.4,
         "pre": 0.5202976412128605,
         "rec": 0.8506172839506172,
-        "seg_iou": 0.53091255103639,
-        "seg_itf_err": 0.1818054062636106,
-        "seg_mrg_err": 0.19258553623878702,
-        "seg_pcp_err": 0.09469650646121235,
+        "seg_iou": 0.5814366998577525,
+        "seg_itf_err": 0.07361308677098151,
+        "seg_mrg_err": 0.23684210526315788,
+        "seg_pcp_err": 0.10810810810810811,
         "tpr": 0.8506172839506172,
     },
 }
@@ -124,7 +124,7 @@ class CheckMetricTestCase(unittest.TestCase):
 
         print("Current results:")
         pprint(cls.curr_results)
-        cls.default_results = default_results["v0_1_0"]
+        cls.default_results = default_results["v1_0_0"]
 
     def test_pd_fa(self):
         self.assertEqual(self.curr_results["basic_pd"], self.default_results["dist_pd"])
