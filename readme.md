@@ -2,14 +2,20 @@
   <img src="https://github.com/lartpang/PyIRSTDMetrics/blob/main/images/logo.png?raw=true" alt="Logo" width="320" height="auto">
   </br>
   <h2>PyIRSTDMetrics: A simple and efficient implementation for the IRSTD performance analysis</h2>
+   <a href='https://arxiv.org/abs/2509.16888'>
+      <img src='https://img.shields.io/badge/Paper-arXiv-red?style=flat&logo=arXiv&logoColor=red' alt='arXiv'>
+   </a>
   <img src="https://img.shields.io/pypi/v/pyirstdmetrics">
   <img src="https://img.shields.io/pypi/dm/pyirstdmetrics?label=pypi%20downloads&logo=PyPI&logoColor=white">
-  <img src="https://img.shields.io/github/last-commit/lartpang/PyIRSTDMetrics">
   <img src="https://img.shields.io/github/last-commit/lartpang/PyIRSTDMetrics">
   <img src="https://img.shields.io/github/release-date/lartpang/PyIRSTDMetrics">
   </br>
   <img src="https://api.star-history.com/svg?repos=lartpang/PyIRSTDMetrics&type=Date" alt="Star History Chart" width="600" height="auto">
 </div>
+
+## News
+
+- 2025-9-23: Our paper (*Rethinking Evaluation of Infrared Small Target Detection*) accepted by NeurIPS 2025 (D&B) has been released on the [arXiv (2509.16888)](https://arxiv.org/abs/2509.16888).
 
 ## Introduction
 
@@ -60,7 +66,21 @@ The core files are in the folder `py_irstd_metrics`.
 - [examples/test_metrics.py](./examples/test_metrics.py)
 - [examples/metric_recorder.py](./examples/metric_recorder.py)
 
+## Thanks
+
+- [BasicIRSTD](https://github.com/XinyiYing/BasicIRSTD) is a PyTorch-based open-source and easy-to-use toolbox for infrared small target detction (IRSTD).
+
+## Citation
+
 ```text
+@misc{HierarchicalIoUBasedAnalysis,
+  title         = {Rethinking Evaluation of Infrared Small Target Detection},
+  author        = {Youwei Pang and Xiaoqi Zhao and Lihe Zhang and Huchuan Lu and Georges El Fakhri and Xiaofeng Liu and Shijian Lu},
+  year          = {2025},
+  eprint        = {2509.16888},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.CV},
+}
 @inproceedings{IRSTD-ACM-nIoU,
   title     = {Asymmetric Contextual Modulation for Infrared Small Target Detection},
   booktitle = WACV,
@@ -74,15 +94,15 @@ The core files are in the folder `py_irstd_metrics`.
   month     = {Jan},
 }
 @article{IRSTD-DNANet-PdFa,
-  title    = {Dense Nested Attention Network for Infrared Small Target Detection},
-  author   = {Li, Boyang and Xiao, Chao and Wang, Longguang and Wang, Yingqian and Lin, Zaiping and Li, Miao and An, Wei and Guo, Yulan},
-  journal  = IEEE_J_IP,
-  year     = {2023},
-  volume   = {32},
-  number   = {},
-  pages    = {1745-1758},
-  doi      = {10.1109/TIP.2022.3199107},
-  issn     = {1941-0042},
-  month    = {},
+  title   = {Dense Nested Attention Network for Infrared Small Target Detection},
+  author  = {Li, Boyang and Xiao, Chao and Wang, Longguang and Wang, Yingqian and Lin, Zaiping and Li, Miao and An, Wei and Guo, Yulan},
+  journal = IEEE_J_IP,
+  year    = {2023},
+  volume  = {32},
+  number  = {},
+  pages   = {1745-1758},
+  doi     = {10.1109/TIP.2022.3199107},
+  issn    = {1941-0042},
+  month   = {},
 }
 ```
