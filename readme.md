@@ -13,6 +13,12 @@
   <img src="https://api.star-history.com/svg?repos=lartpang/PyIRSTDMetrics&type=Date" alt="Star History Chart" width="600" height="auto">
 </div>
 
+> [!important]
+>
+> Our exploration in this field continues with PyIRSTDMetrics, a project born from the same core motivation as our previous project [PySODMetrics](https://github.com/lartpang/PySODMetrics/tree/main).
+> ​​Think of them as twin initiatives: [PySODMetrics](https://github.com/lartpang/PySODMetrics/tree/main) maps the landscape of current evaluation, while its sibling (PyIRSTDMetrics) takes the next step to expand upon and rethink it.
+> We'd love your star! 🌟
+
 ## News
 
 - 2025-9-23: Our paper (*Rethinking Evaluation of Infrared Small Target Detection*) accepted by NeurIPS 2025 (D&B) has been released on the [arXiv (2509.16888)](https://arxiv.org/abs/2509.16888).
