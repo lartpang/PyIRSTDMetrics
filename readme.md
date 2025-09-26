@@ -10,7 +10,6 @@
   <img src="https://img.shields.io/github/last-commit/lartpang/PyIRSTDMetrics">
   <img src="https://img.shields.io/github/release-date/lartpang/PyIRSTDMetrics">
   </br>
-  <img src="https://api.star-history.com/svg?repos=lartpang/PyIRSTDMetrics&type=Date" alt="Star History Chart" width="600" height="auto">
 </div>
 
 > [!important]
