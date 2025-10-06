@@ -37,20 +37,20 @@ class ProbabilityDetectionAndFalseAlarmRate:
         """
         assert bin_prob.shape == bin_mask.shape, (bin_prob.shape, bin_mask.shape)
         assert bin_prob.dtype == bin_mask.dtype == bool, (bin_prob.dtype, bin_mask.dtype)
-        cnt_prob_tgts = measure.regionprops(measure.label(bin_prob.astype(int), connectivity=2))
-        cnt_mask_tgts = measure.regionprops(measure.label(bin_mask.astype(int), connectivity=2))
-        num_prob_tgts = len(cnt_prob_tgts)
-        num_mask_tgts = len(cnt_mask_tgts)
+        prob_tgts = measure.regionprops(measure.label(bin_prob.astype(int), connectivity=2))
+        mask_tgts = measure.regionprops(measure.label(bin_mask.astype(int), connectivity=2))
+        num_prob_tgts = len(prob_tgts)
+        num_mask_tgts = len(mask_tgts)
 
         # idx_prob_tgt -> idx_mask_tgt
         matched_status = np.zeros((num_mask_tgts, num_prob_tgts), dtype=bool)
-        for idx_mask_tgt, cnt_mask_tgt in enumerate(cnt_mask_tgts):
-            cnt_mask_xy = np.asarray(cnt_mask_tgt.centroid)
-            for idx_prob_tgt, cnt_prob_tgt in enumerate(cnt_prob_tgts):
+        for idx_mask_tgt, mask_tgt in enumerate(mask_tgts):
+            cnt_mask_xy = np.asarray(mask_tgt.centroid)
+            for idx_prob_tgt, prob_tgt in enumerate(prob_tgts):
                 if np.any(matched_status[:, idx_prob_tgt]):
                     continue
 
-                cnt_prob_xy = np.asarray(cnt_prob_tgt.centroid)
+                cnt_prob_xy = np.asarray(prob_tgt.centroid)
                 distance = np.linalg.norm(cnt_prob_xy - cnt_mask_xy)
                 if distance < self.distance_threshold:
                     matched_status[idx_mask_tgt, idx_prob_tgt] = True
@@ -62,7 +62,7 @@ class ProbabilityDetectionAndFalseAlarmRate:
 
         matched_prob_tgt_status = np.count_nonzero(matched_status, axis=0)
         unmatched_pre_tgt_indices = np.where(matched_prob_tgt_status == 0)[0]
-        fp_area = sum([cnt_prob_tgts[j].area if num_prob_tgts > 0 else 0 for j in unmatched_pre_tgt_indices])
+        fp_area = sum([prob_tgts[j].area if num_prob_tgts > 0 else 0 for j in unmatched_pre_tgt_indices])
         return tp_objs, fp_objs, fn_objs, fp_area
 
     def update(self, prob: np.ndarray, mask: np.ndarray):
@@ -115,15 +115,15 @@ class OPDCMatching:
         paired_distance = np.empty(shape=(max(num_mask_tgts, 1), max(num_pred_tgts, 1)), dtype=float)
         paired_distance.fill(mask_tgts_map.size)
         paired_iou = np.zeros(shape=(max(num_mask_tgts, 1), max(num_pred_tgts, 1)), dtype=float)
-        for i, mask_prop in enumerate(mask_props):
-            mask_cnt_yx = np.asarray(mask_prop.centroid).reshape(2)
+        for i, mask_tgt in enumerate(mask_props):
+            mask_cnt_yx = np.asarray(mask_tgt.centroid).reshape(2)
 
-            for j, pred_prop in enumerate(pred_props):
-                pred_cnt_yx = np.asarray(pred_prop.centroid).reshape(2)
+            for j, pred_tgt in enumerate(pred_props):
+                pred_cnt_yx = np.asarray(pred_tgt.centroid).reshape(2)
                 paired_distance[i, j] = np.linalg.norm(pred_cnt_yx - mask_cnt_yx)
 
-                _pred_tgt_mask = pred_tgts_map == pred_prop.label
-                _mask_tgt_mask = mask_tgts_map == mask_prop.label
+                _pred_tgt_mask = pred_tgts_map == pred_tgt.label
+                _mask_tgt_mask = mask_tgts_map == mask_tgt.label
                 _inter_area = np.count_nonzero(_pred_tgt_mask & _mask_tgt_mask)
 
                 iou = 0
@@ -176,13 +176,13 @@ class DistanceOnlyMatching:
 
         # idx_pred_tgt -> idx_mask_tgt
         matched_status = np.zeros((num_mask_tgts, num_pred_tgts), dtype=bool)
-        for idx_mask_tgt, cnt_mask_tgt in enumerate(mask_props):
-            cnt_mask_xy = np.asarray(cnt_mask_tgt.centroid)
-            for idx_pred_tgt, cnt_pred_tgt in enumerate(pred_props):
+        for idx_mask_tgt, mask_tgt in enumerate(mask_props):
+            cnt_mask_xy = np.asarray(mask_tgt.centroid)
+            for idx_pred_tgt, pred_tgt in enumerate(pred_props):
                 if np.any(matched_status[:, idx_pred_tgt]):
                     continue
 
-                cnt_pred_xy = np.asarray(cnt_pred_tgt.centroid)
+                cnt_pred_xy = np.asarray(pred_tgt.centroid)
                 distance = np.linalg.norm(cnt_pred_xy - cnt_mask_xy)
                 if distance < self.distance_threshold:
                     matched_status[idx_mask_tgt, idx_pred_tgt] = True
