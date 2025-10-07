@@ -13,4 +13,5 @@ from .targetwise_metrics import (
     MatchingBasedMetrics,
     OPDCMatching,
     ProbabilityDetectionAndFalseAlarmRate,
+    ShootingRuleBasedProbabilityDetectionAndFalseAlarmRate,
 )

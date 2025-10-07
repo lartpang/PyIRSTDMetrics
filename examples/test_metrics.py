@@ -34,6 +34,10 @@ default_results = {
         "seg_pcp_err": 0.10810810810810811,
         "tpr": 0.8506172839506172,
     },
+    "v1_0_1": {
+        "shoot_fa": 4.8828125e-05,
+        "shoot_pd": 1.0,
+    },
 }
 
 
@@ -58,6 +62,7 @@ class CheckMetricTestCase(unittest.TestCase):
         )
 
         basic_irstd_metrics = py_irstd_metrics.ProbabilityDetectionAndFalseAlarmRate(num_bins=8, distance_threshold=3)
+        shoot_irstd_metrics = py_irstd_metrics.ShootingRuleBasedProbabilityDetectionAndFalseAlarmRate(num_bins=8, box_1_radius=1, box_2_radius=4)
         opdc_irstd_metrics = py_irstd_metrics.MatchingBasedMetrics(num_bins=8, matching_method=py_irstd_metrics.OPDCMatching(overlap_threshold=0.5, distance_threshold=3))
         dist_irstd_metrics = py_irstd_metrics.MatchingBasedMetrics(num_bins=8, matching_method=py_irstd_metrics.DistanceOnlyMatching(distance_threshold=3))
         irstd_error_analysis = py_irstd_metrics.HierarchicalIoUBasedErrorAnalysis(num_bins=8, overlap_threshold=0.5, distance_threshold=3)
@@ -82,12 +87,14 @@ class CheckMetricTestCase(unittest.TestCase):
             irstd_cm_metrics.update(pred, mask)
 
             basic_irstd_metrics.update(pred, mask)
+            shoot_irstd_metrics.update(pred, mask)
             opdc_irstd_metrics.update(pred, mask)
             dist_irstd_metrics.update(pred, mask)
             irstd_error_analysis.update(pred, mask)
 
         cm_metrics = irstd_cm_metrics.get()
         basic_metrics = basic_irstd_metrics.get()
+        shoot_metrics = shoot_irstd_metrics.get()
         opdc_metrics = opdc_irstd_metrics.get()
         dist_metrics = dist_irstd_metrics.get()
         error_analysis = irstd_error_analysis.get()
@@ -103,6 +110,9 @@ class CheckMetricTestCase(unittest.TestCase):
             #
             "basic_pd": basic_metrics["probability_detection"][4].item(),
             "basic_fa": basic_metrics["false_alarm"][4].item(),
+            #
+            "shoot_pd": shoot_metrics["probability_detection"][4].item(),
+            "shoot_fa": shoot_metrics["false_alarm"][4].item(),
             #
             "dist_fa": dist_metrics["false_alarm"][4].item(),
             "dist_pd": dist_metrics["probability_detection"][4].item(),
@@ -125,6 +135,7 @@ class CheckMetricTestCase(unittest.TestCase):
         print("Current results:")
         pprint(cls.curr_results)
         cls.default_results = default_results["v1_0_0"]
+        cls.default_results.update(default_results["v1_0_1"])  # add shooting-rule-based pd-fa
 
     def test_pd_fa(self):
         self.assertEqual(self.curr_results["basic_pd"], self.default_results["dist_pd"])
@@ -133,6 +144,9 @@ class CheckMetricTestCase(unittest.TestCase):
     def test_metrics(self):
         self.assertEqual(self.curr_results["basic_pd"], self.default_results["basic_pd"])
         self.assertEqual(self.curr_results["basic_fa"], self.default_results["basic_fa"])
+
+        self.assertEqual(self.curr_results["shoot_pd"], self.default_results["shoot_pd"])
+        self.assertEqual(self.curr_results["shoot_fa"], self.default_results["shoot_fa"])
 
         self.assertEqual(self.curr_results["dist_fa"], self.default_results["dist_fa"])
         self.assertEqual(self.curr_results["dist_pd"], self.default_results["dist_pd"])

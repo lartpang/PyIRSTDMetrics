@@ -21,6 +21,7 @@ from py_irstd_metrics.targetwise_metrics import (
     MatchingBasedMetrics,
     OPDCMatching,
     ProbabilityDetectionAndFalseAlarmRate,
+    ShootingRuleBasedProbabilityDetectionAndFalseAlarmRate,
 )
 from py_irstd_metrics.utils import ndarray_to_basetype
 
@@ -30,6 +31,41 @@ class BasicIRSTDPerformance:
         self.original_pd_fa = ProbabilityDetectionAndFalseAlarmRate(
             num_bins=num_bins,
             distance_threshold=3,
+        )
+
+    def update(self, prob: np.ndarray, mask: np.ndarray, mask_path: str = None) -> None:
+        """
+        Args:
+            prob (np.ndarray[float]): grayscale prediction with values in 0~1.
+            mask (np.ndarray[bool]): binary bin_mask.
+            mask_path (str, optional): the patch of the mask file. Defaults to None.
+        """
+        assert prob.shape == mask.shape, (prob.shape, mask.shape, mask_path)
+        assert 0 <= prob.min() <= prob.max() <= 1, (prob.dtype, prob.min(), prob.max())
+        assert mask.dtype == bool, (mask.dtype, mask_path)
+
+        self.original_pd_fa.update(prob=prob, mask=mask)
+
+    def get_all_results(self, num_bits=4):
+        original_pd_fa = self.original_pd_fa.get()
+
+        return {
+            # target-level
+            "pd": original_pd_fa["probability_detection"].round(num_bits),
+            "fa": (original_pd_fa["false_alarm"] * 1e6).round(num_bits),
+        }
+
+    def show(self, num_bits=4, return_ndarray: bool = False) -> dict:
+        results = self.get_all_results(num_bits)
+        if not return_ndarray:
+            results = ndarray_to_basetype(results)
+        return results
+
+
+class ShootIRSTDPerformance:
+    def __init__(self, num_bins=10) -> None:
+        self.original_pd_fa = ShootingRuleBasedProbabilityDetectionAndFalseAlarmRate(
+            num_bins=num_bins, box_1_radius=1, box_2_radius=4
         )
 
     def update(self, prob: np.ndarray, mask: np.ndarray, mask_path: str = None) -> None:

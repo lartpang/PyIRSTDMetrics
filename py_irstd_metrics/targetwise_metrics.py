@@ -25,46 +25,6 @@ class ProbabilityDetectionAndFalseAlarmRate:
         self.fp_area = np.zeros(shape=num_bins, dtype=int)
         self.total_area = 0
 
-    def get_tpfpfn_obj_infos(self, bin_prob: np.ndarray, bin_mask: np.ndarray):
-        """Update the bin_prob and bin_mask to calculate the target-wise positive detection.
-
-        Args:
-            bin_prob (np.ndarray[bool]): binary prediction.
-            bin_mask (np.ndarray[bool]): binary bin_mask.
-
-        Returns:
-            tp_objs, fp_objs, fn_objs, fp_area
-        """
-        assert bin_prob.shape == bin_mask.shape, (bin_prob.shape, bin_mask.shape)
-        assert bin_prob.dtype == bin_mask.dtype == bool, (bin_prob.dtype, bin_mask.dtype)
-        prob_tgts = measure.regionprops(measure.label(bin_prob.astype(int), connectivity=2))
-        mask_tgts = measure.regionprops(measure.label(bin_mask.astype(int), connectivity=2))
-        num_prob_tgts = len(prob_tgts)
-        num_mask_tgts = len(mask_tgts)
-
-        # idx_prob_tgt -> idx_mask_tgt
-        matched_status = np.zeros((num_mask_tgts, num_prob_tgts), dtype=bool)
-        for idx_mask_tgt, mask_tgt in enumerate(mask_tgts):
-            cnt_mask_xy = np.asarray(mask_tgt.centroid)
-            for idx_prob_tgt, prob_tgt in enumerate(prob_tgts):
-                if np.any(matched_status[:, idx_prob_tgt]):
-                    continue
-
-                cnt_prob_xy = np.asarray(prob_tgt.centroid)
-                distance = np.linalg.norm(cnt_prob_xy - cnt_mask_xy)
-                if distance < self.distance_threshold:
-                    matched_status[idx_mask_tgt, idx_prob_tgt] = True
-                    break
-
-        tp_objs = np.count_nonzero(matched_status)
-        fp_objs = num_prob_tgts - tp_objs
-        fn_objs = num_mask_tgts - tp_objs
-
-        matched_prob_tgt_status = np.count_nonzero(matched_status, axis=0)
-        unmatched_pre_tgt_indices = np.where(matched_prob_tgt_status == 0)[0]
-        fp_area = sum([prob_tgts[j].area if num_prob_tgts > 0 else 0 for j in unmatched_pre_tgt_indices])
-        return tp_objs, fp_objs, fn_objs, fp_area
-
     def update(self, prob: np.ndarray, mask: np.ndarray):
         """Update the prob and mask to calculate the target-wise positive detection.
 
@@ -77,9 +37,37 @@ class ProbabilityDetectionAndFalseAlarmRate:
         assert mask.dtype == bool, mask.dtype
         self.total_area += mask.size
 
+        mask_tgts = measure.regionprops(measure.label(mask.astype(int), connectivity=2))
+        num_mask_tgts = len(mask_tgts)
+
         # >0, >1bin, >2bin, ..., >(num_bins-1)*bin
         for idx_bin, thr in enumerate(self.thresholds):
-            tp_objs, fp_objs, fn_objs, fp_area = self.get_tpfpfn_obj_infos(bin_prob=prob > thr, bin_mask=mask)
+            bin_prob = prob > thr
+            prob_tgts = measure.regionprops(measure.label(bin_prob.astype(int), connectivity=2))
+            num_prob_tgts = len(prob_tgts)
+
+            # idx_prob_tgt -> idx_mask_tgt
+            matched_status = np.zeros((num_mask_tgts, num_prob_tgts), dtype=bool)
+            for idx_mask_tgt, mask_tgt in enumerate(mask_tgts):
+                cnt_mask_xy = np.asarray(mask_tgt.centroid)
+                for idx_prob_tgt, prob_tgt in enumerate(prob_tgts):
+                    if np.any(matched_status[:, idx_prob_tgt]):
+                        continue
+
+                    cnt_prob_xy = np.asarray(prob_tgt.centroid)
+                    distance = np.linalg.norm(cnt_prob_xy - cnt_mask_xy)
+                    if distance < self.distance_threshold:
+                        matched_status[idx_mask_tgt, idx_prob_tgt] = True
+                        break
+
+            tp_objs = np.count_nonzero(matched_status)
+            fp_objs = num_prob_tgts - tp_objs
+            fn_objs = num_mask_tgts - tp_objs
+
+            matched_prob_tgt_status = np.count_nonzero(matched_status, axis=0)
+            unmatched_pre_tgt_indices = np.where(matched_prob_tgt_status == 0)[0]
+            fp_area = sum([prob_tgts[j].area if num_prob_tgts > 0 else 0 for j in unmatched_pre_tgt_indices])
+
             self.tp_objs[idx_bin] += tp_objs
             self.fp_objs[idx_bin] += fp_objs
             self.fn_objs[idx_bin] += fn_objs
@@ -95,6 +83,86 @@ class ProbabilityDetectionAndFalseAlarmRate:
             }
         """
         probability_detection = divide_func(self.tp_objs, self.tp_objs + self.fn_objs)
+        false_alarm = divide_func(self.fp_area, [self.total_area])
+        return {"probability_detection": probability_detection, "false_alarm": false_alarm}
+
+
+class ShootingRuleBasedProbabilityDetectionAndFalseAlarmRate:
+    """Target-wise Probability of Detection (PD) and False Alarm Rate (Fa) based on the shooting rule [1] (https://figures.semanticscholar.org/12171bbd9edde3bbaa99880f3a947e22efe43188/7-Figure5-1.png).
+
+    References:
+        [1] Li, Ruojing et al. "Direction-Coded Temporal U-Shape Module for Multiframe Infrared Small Target Detection." IEEE Transactions on Neural Networks and Learning Systems 36 (2023): 555-568.
+    """
+
+    def __init__(self, num_bins=1, box_1_radius=1, box_2_radius=4):
+        super().__init__()
+        assert box_2_radius > box_1_radius > 0, (
+            f"box_2_radius={box_2_radius} must be greater than box_1_radius={box_1_radius} and greater than 0."
+        )
+        assert isinstance(num_bins, int) and num_bins > 0, f"int num_bins={num_bins} must be greater than 0."
+
+        self.box_1_radius = box_1_radius
+        self.box_2_radius = box_2_radius
+        if num_bins == 1:
+            self.thresholds = np.array([0.5])
+        else:
+            self.thresholds = np.linspace(0, 1, num_bins, endpoint=False)
+
+        self.tp_objs = np.zeros(shape=num_bins, dtype=int)
+        self.fp_area = np.zeros(shape=num_bins, dtype=int)
+        self.total_objs = 0
+        self.total_area = 0
+
+    def update(self, prob: np.ndarray, mask: np.ndarray):
+        """Update the prob and mask to calculate the target-wise positive detection.
+
+        Args:
+            prob (np.ndarray[float]): grayscale prediction with values in 0~1.
+            mask (np.ndarray[bool]): binary bin_mask.
+        """
+        assert prob.shape == mask.shape, (prob.shape, mask.shape)
+        assert 0 <= prob.min() <= prob.max() <= 1, (prob.dtype, prob.min(), prob.max())
+        assert mask.dtype == bool, mask.dtype
+        self.total_area += mask.size
+
+        mask_tgts = measure.regionprops(measure.label(mask, connectivity=2))
+        self.total_objs += len(mask_tgts)
+
+        invalid_mask_region = np.ones(prob.shape, dtype=bool)
+        # >0, >1bin, >2bin, ..., >(num_bins-1)*bin
+        for idx_bin, thr in enumerate(self.thresholds):
+            # the original code uses `>=`, but here, we use `>` to keep the same setting as other codes
+            bin_prob = prob > thr
+
+            invalid_mask_region.fill(True)
+            for mask_tgt in mask_tgts:
+                is_matched = False
+
+                for h, w in mask_tgt.coords:
+                    h1, h2 = max(0, h - self.box_2_radius), min(prob.shape[0], h + self.box_2_radius + 1)
+                    w1, w2 = max(0, w - self.box_2_radius), min(prob.shape[1], w + self.box_2_radius + 1)
+                    invalid_mask_region[h1:h2, w1:w2] = False
+
+                    if not is_matched:
+                        h1, h2 = max(0, h - self.box_1_radius), min(prob.shape[0], h + self.box_1_radius + 1)
+                        w1, w2 = max(0, w - self.box_1_radius), min(prob.shape[1], w + self.box_1_radius + 1)
+                        if np.count_nonzero(bin_prob[h1:h2, w1:w2]) >= 1:
+                            is_matched = True
+
+                if is_matched:
+                    self.tp_objs[idx_bin] += 1
+            self.fp_area[idx_bin] += np.count_nonzero(bin_prob & invalid_mask_region)
+
+    def get(self) -> dict:
+        """Return the target-wise metrics: probability of detection and false alarm rate.
+
+        Returns:
+            {
+                probability_detection (np.ndarray): probability_detection, (N,)
+                false_alarm (np.ndarray): false_alarm, (N,)
+            }
+        """
+        probability_detection = divide_func(self.tp_objs, self.total_objs)
         false_alarm = divide_func(self.fp_area, [self.total_area])
         return {"probability_detection": probability_detection, "false_alarm": false_alarm}
 
