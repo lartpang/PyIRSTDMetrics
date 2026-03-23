@@ -183,22 +183,35 @@ class OPDCMatching:
         paired_distance = np.empty(shape=(max(num_mask_tgts, 1), max(num_pred_tgts, 1)), dtype=float)
         paired_distance.fill(mask_tgts_map.size)
         paired_iou = np.zeros(shape=(max(num_mask_tgts, 1), max(num_pred_tgts, 1)), dtype=float)
+
+        if not (mask_props and pred_props):
+            return paired_distance, paired_iou
+
+        # 向量化距离计算：消除 Python 双循环
+        mask_centroids = np.array([p.centroid for p in mask_props])  # (M, 2)
+        pred_centroids = np.array([p.centroid for p in pred_props])  # (N, 2)
+        diff = mask_centroids[:, None, :] - pred_centroids[None, :, :]  # (M, N, 2)
+        paired_distance[:num_mask_tgts, :num_pred_tgts] = np.linalg.norm(diff, axis=2)
+
+        # bbox 剪枝 + 局部像素 IoU 计算
         for i, mask_tgt in enumerate(mask_props):
-            mask_cnt_yx = np.asarray(mask_tgt.centroid).reshape(2)
-
+            bbox_m = mask_tgt.bbox  # (min_row, min_col, max_row, max_col)
             for j, pred_tgt in enumerate(pred_props):
-                pred_cnt_yx = np.asarray(pred_tgt.centroid).reshape(2)
-                paired_distance[i, j] = np.linalg.norm(pred_cnt_yx - mask_cnt_yx)
+                bbox_p = pred_tgt.bbox
+                r1 = max(bbox_m[0], bbox_p[0])
+                c1 = max(bbox_m[1], bbox_p[1])
+                r2 = min(bbox_m[2], bbox_p[2])
+                c2 = min(bbox_m[3], bbox_p[3])
+                if r1 >= r2 or c1 >= c2:
+                    continue  # bbox 无交集，IoU 保持为 0
 
-                _pred_tgt_mask = pred_tgts_map == pred_tgt.label
-                _mask_tgt_mask = mask_tgts_map == mask_tgt.label
+                _pred_tgt_mask = pred_tgts_map[r1:r2, c1:c2] == pred_tgt.label
+                _mask_tgt_mask = mask_tgts_map[r1:r2, c1:c2] == mask_tgt.label
                 _inter_area = np.count_nonzero(_pred_tgt_mask & _mask_tgt_mask)
-
-                iou = 0
                 if _inter_area > 0:
-                    _union_area = np.count_nonzero(_pred_tgt_mask | _mask_tgt_mask)
-                    iou = _inter_area / _union_area
-                paired_iou[i, j] = iou
+                    _union_area = pred_tgt.area + mask_tgt.area - _inter_area
+                    paired_iou[i, j] = _inter_area / _union_area
+
         return paired_distance, paired_iou
 
     def overlap_priority_constraint(self, matched_status, paired_distance, valid_iou_status):
@@ -229,7 +242,7 @@ class OPDCMatching:
             self.overlap_priority_constraint(matched_status, paired_distance, valid_iou_status)
         if np.count_nonzero(valid_distance_status) > 0:
             self.distance_based_compensation(matched_status, paired_distance, valid_distance_status)
-        return matched_status
+        return matched_status, paired_iou
 
 
 class DistanceOnlyMatching:
@@ -255,7 +268,7 @@ class DistanceOnlyMatching:
                 if distance < self.distance_threshold:
                     matched_status[idx_mask_tgt, idx_pred_tgt] = True
                     break
-        return matched_status
+        return matched_status, None
 
 
 class MatchingBasedMetrics:
@@ -289,15 +302,16 @@ class MatchingBasedMetrics:
         assert mask.dtype == bool, mask.dtype
         self.total_area += mask.size
 
+        mask_tgts_map = measure.label(mask, connectivity=2)
+        mask_props = measure.regionprops(mask_tgts_map)
+        num_mask_tgts = len(mask_props)
+
         for idx_bin, thr in enumerate(self.thresholds):
             pred_tgts_map = measure.label(prob > thr, connectivity=2)
-            mask_tgts_map = measure.label(mask, connectivity=2)
             pred_props = measure.regionprops(pred_tgts_map)
-            mask_props = measure.regionprops(mask_tgts_map)
             num_pred_tgts = len(pred_props)
-            num_mask_tgts = len(mask_props)
 
-            matched_status = self.matching_method(pred_tgts_map, mask_tgts_map, pred_props, mask_props)
+            matched_status, paired_iou = self.matching_method(pred_tgts_map, mask_tgts_map, pred_props, mask_props)
             matched_pred_tgt_status = np.count_nonzero(matched_status, axis=0)
             if not set(matched_pred_tgt_status.tolist()).issubset((0, 1)):
                 raise ValueError("Some predicted targets are matched to multiple GT targets.")
@@ -305,25 +319,30 @@ class MatchingBasedMetrics:
             if not set(matched_mask_tgt_status.tolist()).issubset((0, 1)):
                 raise ValueError("Some GT targets are matched to multiple predicted targets.")
 
-            tp_ious = []
             h_indices, w_indices = np.where(matched_status)
-            for h_index, w_index in zip(h_indices, w_indices):
-                if num_mask_tgts > 0:
-                    mask_tgt_mask = mask_tgts_map == mask_props[h_index].label
-                else:
-                    mask_tgt_mask = mask_tgts_map  # all zero, background
-                if num_pred_tgts > 0:
-                    pred_tgt_mask = pred_tgts_map == pred_props[w_index].label
-                else:
-                    pred_tgt_mask = pred_tgts_map  # background
+            if paired_iou is not None:
+                # directly reuse the paired iou calculated in the matching process
+                self.tp_ious[idx_bin] += paired_iou[h_indices, w_indices].sum()
+            else:
+                # for matching methods that do not provide paired_iou (e.g., DistanceOnlyMatching)
+                tp_ious = []
+                for h_index, w_index in zip(h_indices, w_indices):
+                    if num_mask_tgts > 0:
+                        mask_tgt_mask = mask_tgts_map == mask_props[h_index].label
+                    else:
+                        mask_tgt_mask = mask_tgts_map  # all zero, background
+                    if num_pred_tgts > 0:
+                        pred_tgt_mask = pred_tgts_map == pred_props[w_index].label
+                    else:
+                        pred_tgt_mask = pred_tgts_map  # background
 
-                tp = np.count_nonzero(pred_tgt_mask & mask_tgt_mask)  # tp
-                fp = np.count_nonzero(pred_tgt_mask & ~mask_tgt_mask)
-                fn = np.count_nonzero(~pred_tgt_mask & mask_tgt_mask)
-                tp_fp_fn = np.count_nonzero(pred_tgt_mask | mask_tgt_mask)  # tp + fp + fn
-                assert tp_fp_fn == tp + fp + fn, tp_fp_fn - (tp + fp + fn)
-                tp_ious.append(divide_func(tp, tp_fp_fn))
-            self.tp_ious[idx_bin] += sum(tp_ious)
+                    tp = np.count_nonzero(pred_tgt_mask & mask_tgt_mask)  # tp
+                    fp = np.count_nonzero(pred_tgt_mask & ~mask_tgt_mask)
+                    fn = np.count_nonzero(~pred_tgt_mask & mask_tgt_mask)
+                    tp_fp_fn = np.count_nonzero(pred_tgt_mask | mask_tgt_mask)  # tp + fp + fn
+                    assert tp_fp_fn == tp + fp + fn, tp_fp_fn - (tp + fp + fn)
+                    tp_ious.append(divide_func(tp, tp_fp_fn))
+                self.tp_ious[idx_bin] += sum(tp_ious)
 
             num_final_unassigned_pred_tgts = np.count_nonzero(matched_pred_tgt_status == 0)
             num_final_unassigned_mask_tgts = np.count_nonzero(matched_mask_tgt_status == 0)
@@ -396,13 +415,14 @@ class HierarchicalIoUBasedErrorAnalysis:
         assert 0 <= prob.min() <= prob.max() <= 1, (prob.dtype, prob.min(), prob.max())
         assert mask.dtype == bool, mask.dtype
 
+        mask_tgts_map = measure.label(mask, connectivity=2)
+        mask_props = measure.regionprops(mask_tgts_map)
+        num_mask_tgts = len(mask_props)
+
         for idx_bin, thr in enumerate(self.thresholds):
             pred_tgts_map = measure.label(prob > thr, connectivity=2)
             pred_props = measure.regionprops(pred_tgts_map)
-            mask_tgts_map = measure.label(mask, connectivity=2)
-            mask_props = measure.regionprops(mask_tgts_map)
             num_pred_tgts = len(pred_props)
-            num_mask_tgts = len(mask_props)
 
             paired_distance, paired_iou = self.matching_method.get_paired_info(
                 pred_tgts_map, mask_tgts_map, pred_props, mask_props

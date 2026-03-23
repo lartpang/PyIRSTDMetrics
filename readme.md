@@ -73,6 +73,14 @@ The core files are in the folder `py_irstd_metrics`.
 - [examples/test_metrics.py](./examples/test_metrics.py)
 - [examples/metric_recorder.py](./examples/metric_recorder.py)
 
+## Performance Improvements
+
+- In v1.0.2, we significantly optimized the OPDC matching computation (`OPDCMatching`).
+
+![Benchmark: v1.0.1 vs v1.0.2](./examples/benchmark_results.png)
+
+To reproduce the benchmark, see [examples/benchmark_metrics.py](./examples/benchmark_metrics.py).
+
 ## Thanks
 
 - [BasicIRSTD](https://github.com/XinyiYing/BasicIRSTD) is a PyTorch-based open-source and easy-to-use toolbox for infrared small target detction (IRSTD).
