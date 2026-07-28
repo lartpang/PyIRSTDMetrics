@@ -88,13 +88,16 @@ To reproduce the benchmark, see [examples/benchmark_metrics.py](./examples/bench
 ## Citation
 
 ```bibtex
-@misc{HierarchicalIoUBasedAnalysis,
-  title         = {Rethinking Evaluation of Infrared Small Target Detection},
-  author        = {Youwei Pang and Xiaoqi Zhao and Lihe Zhang and Huchuan Lu and Georges El Fakhri and Xiaofeng Liu and Shijian Lu},
-  year          = {2025},
-  eprint        = {2509.16888},
-  archiveprefix = {arXiv},
-  primaryclass  = {cs.CV},
+@inproceedings{HierarchicalIoUBasedAnalysis,
+  title     = {Rethinking Evaluation of Infrared Small Target Detection},
+  author    = {Pang, Youwei and Zhao, Xiaoqi and Zhang, Lihe and Lu, Huchuan and Fakhri, Georges and Liu, Xiaofeng and Lu, Shijian},
+  booktitle = {Advances in Neural Information Processing Systems},
+  pages     = {},
+  volume    = {38},
+  year      = {2025},
+  publisher = {Curran Associates, Inc.},
+  editor    = {D. Belgrave and C. Zhang and H. Lin and R. Pascanu and P. Koniusz and M. Ghassemi and N. Chen},
+  url       = {https://proceedings.neurips.cc/paper_files/paper/2025/file/a81051ae2c8b1e46bd51480917b8ab84-Paper-Datasets_and_Benchmarks_Track.pdf},
 }
 @inproceedings{IRSTD-ACM-nIoU,
   title     = {Asymmetric Contextual Modulation for Infrared Small Target Detection},
